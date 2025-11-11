@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>Student Dashboard</h1>
+            <div>
+                <span id="user-name">Welcome, Student!</span>
+                <button id="logout-btn" class="btn btn-logout">Logout</button>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-link active" onclick="openTab(event, 'my-attendance')">My Attendance</button>
+            <button class="tab-link" onclick="openTab(event, 'statistics')">My Statistics</button>
+        </div>
+
+        <div id="my-attendance" class="tab-content active">
+            <h2>My Attendance Records</h2>
+            <form id="my-records-filter-form" class="filter-form">
+                <div class="form-group">
+                    <label for="my-filter-course">Course:</label>
+                    <input type="text" id="my-filter-course" placeholder="Filter by course">
+                </div>
+                <div class="form-group">
+                    <label for="my-filter-start-date">From:</label>
+                    <input type="date" id="my-filter-start-date">
+                </div>
+                <div class="form-group">
+                    <label for="my-filter-end-date">To:</label>
+                    <input type="date" id="my-filter-end-date">
+                </div>
+                <button type="submit" class="btn">Filter</button>
+            </form>
+            <div class="table-container">
+                <table id="my-records-table">
+                    <thead>
+                        <tr>
+                            <th>Course</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Remarks</th>
+                            <th>Marked By</th>
+                        </tr>
+                    </thead>
+                    <tbody id="my-records-tbody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="statistics" class="tab-content">
+            <h2>My Statistics</h2>
+            <div id="my-stats-container" class="stats-container">
+                <h3>Overall Performance</h3>
+                <div class="stats-grid" id="my-overall-stats-grid">
+                    </div>
+                <hr>
+                <h4>Performance By Course</h4>
+                <div class="stats-grid" id="my-course-stats-grid">
+                    </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/student.js"></script>
+</body>
+</html>
