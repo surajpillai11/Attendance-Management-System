@@ -1,35 +1,34 @@
 const Attendance = require('../models/Attendance');
 const User = require('../models/User');
 
-// @desc    Mark attendance
-// @route   POST /api/attendance/mark
-// @access  Private (Teacher only)
+// Mark attendance
+// POST /api/attendance/mark
+// Private (Teacher only)
 exports.markAttendance = async (req, res) => {
   try {
     const { studentId, course, date, status, remarks } = req.body;
 
-    // Validation
     if (!studentId || !course || !date || !status) {
       return res.status(400).json({ message: 'Please provide all required fields' });
     }
 
-    // Check if student exists
     const student = await User.findById(studentId);
     if (!student || student.role !== 'student') {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Check if attendance already marked for this date and course
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+
     const existingAttendance = await Attendance.findOne({
       student: studentId,
       course,
-      date: new Date(date).setHours(0, 0, 0, 0)
+      date: targetDate
     });
 
     if (existingAttendance) {
-      // Update existing attendance
       existingAttendance.status = status;
-      existingAttendance.remarks = remarks;
+      existingAttendance.remarks = remarks || '';
       existingAttendance.markedBy = req.user._id;
       await existingAttendance.save();
 
@@ -39,13 +38,12 @@ exports.markAttendance = async (req, res) => {
       });
     }
 
-    // Create new attendance record
     const attendance = await Attendance.create({
       student: studentId,
       course,
-      date: new Date(date),
+      date: targetDate,
       status,
-      remarks,
+      remarks: remarks || '',
       markedBy: req.user._id
     });
 
@@ -54,23 +52,22 @@ exports.markAttendance = async (req, res) => {
       attendance
     });
   } catch (error) {
-    console.error('Mark attendance error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Mark attendance error:', error.message);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// @desc    Get attendance records
-// @route   GET /api/attendance/records
-// @access  Private (Teacher only)
+// Get attendance records (teacher view)
+// GET /api/attendance/records
+// Private (Teacher only)
 exports.getAttendanceRecords = async (req, res) => {
   try {
     const { course, startDate, endDate, studentId } = req.query;
-
-    let query = {};
+    const query = {};
 
     if (course) query.course = course;
     if (studentId) query.student = studentId;
-    
+
     if (startDate || endDate) {
       query.date = {};
       if (startDate) query.date.$gte = new Date(startDate);
@@ -84,22 +81,20 @@ exports.getAttendanceRecords = async (req, res) => {
 
     res.json(records);
   } catch (error) {
-    console.error('Get attendance records error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Get attendance records error:', error.message);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// @desc    Get student's own attendance
-// @route   GET /api/attendance/my-attendance
-// @access  Private (Student only)
+// Get student's own attendance
+// GET /api/attendance/my-attendance
+// Private (Student only)
 exports.getMyAttendance = async (req, res) => {
   try {
     const { course, startDate, endDate } = req.query;
-
-    let query = { student: req.user._id };
+    const query = { student: req.user._id };
 
     if (course) query.course = course;
-    
     if (startDate || endDate) {
       query.date = {};
       if (startDate) query.date.$gte = new Date(startDate);
@@ -112,24 +107,22 @@ exports.getMyAttendance = async (req, res) => {
 
     res.json(records);
   } catch (error) {
-    console.error('Get my attendance error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Get my attendance error:', error.message);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// @desc    Get attendance statistics
-// @route   GET /api/attendance/statistics
-// @access  Private
+// Get attendance statistics
+// GET /api/attendance/statistics
+// Private
 exports.getStatistics = async (req, res) => {
   try {
     const { studentId, course } = req.query;
 
-    // Determine which student to get stats for
-    const targetStudentId = req.user.role === 'teacher' && studentId 
-      ? studentId 
-      : req.user._id;
+    const targetStudentId =
+      req.user.role === 'teacher' && studentId ? studentId : req.user._id;
 
-    let query = { student: targetStudentId };
+    const query = { student: targetStudentId };
     if (course) query.course = course;
 
     const records = await Attendance.find(query);
@@ -141,46 +134,34 @@ exports.getStatistics = async (req, res) => {
       late: records.filter(r => r.status === 'late').length
     };
 
-    stats.presentPercentage = stats.total > 0 
-      ? ((stats.present / stats.total) * 100).toFixed(2) 
-      : 0;
+    stats.presentPercentage =
+      stats.total > 0 ? ((stats.present / stats.total) * 100).toFixed(2) : 0;
 
-    // Get course-wise statistics
     const courseStats = {};
-    records.forEach(record => {
+    for (const record of records) {
       if (!courseStats[record.course]) {
-        courseStats[record.course] = {
-          total: 0,
-          present: 0,
-          absent: 0,
-          late: 0
-        };
+        courseStats[record.course] = { total: 0, present: 0, absent: 0, late: 0 };
       }
       courseStats[record.course].total++;
       courseStats[record.course][record.status]++;
-    });
+    }
 
-    // Calculate percentages for each course
-    Object.keys(courseStats).forEach(course => {
-      const cs = courseStats[course];
-      cs.presentPercentage = cs.total > 0 
-        ? ((cs.present / cs.total) * 100).toFixed(2) 
-        : 0;
-    });
+    for (const courseName of Object.keys(courseStats)) {
+      const c = courseStats[courseName];
+      c.presentPercentage =
+        c.total > 0 ? ((c.present / c.total) * 100).toFixed(2) : 0;
+    }
 
-    res.json({
-      overall: stats,
-      byCourse: courseStats
-    });
+    res.json({ overall: stats, byCourse: courseStats });
   } catch (error) {
-    console.error('Get statistics error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Get statistics error:', error.message);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// @desc    Get all students
-// @route   GET /api/attendance/students
-// @access  Private (Teacher only)
+// Get all students
+// GET /api/attendance/students
+// Private (Teacher only)
 exports.getStudents = async (req, res) => {
   try {
     const students = await User.find({ role: 'student' })
@@ -189,7 +170,7 @@ exports.getStudents = async (req, res) => {
 
     res.json(students);
   } catch (error) {
-    console.error('Get students error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Get students error:', error.message);
+    res.status(500).json({ message: 'Server error' });
   }
 };
