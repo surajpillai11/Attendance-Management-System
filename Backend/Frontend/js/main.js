@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const roleSelect = document.getElementById('register-role');
     const studentFields = document.getElementById('student-fields');
 
-    const API_URL = 'http://localhost:5000/api/auth';
+    const API_URL = '/api/auth';
 
     // Toggle between login and register forms
     showRegisterLink.addEventListener('click', (e) => {

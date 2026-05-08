@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // API URL
-    const API_URL = 'http://localhost:5000/api/attendance';
+    const API_URL = '/api/attendance';
     const authHeader = { 'Authorization': `Bearer ${token}` };
 
     // My Attendance Tab
